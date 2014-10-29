@@ -334,6 +334,10 @@ public class MessageLoader {
             Part part = multiPart.getBodyPart(i);
             if (part.getContentType().indexOf("multipart") >= 0) {
                 setMultipartContent((Multipart) part.getContent(), msgContent);
+            } else if (part.isMimeType("text/html")) {
+                msgContent.html = part.getContent().toString();
+            } else if (part.isMimeType("text/plain")) {
+                msgContent.text = part.getContent().toString();
             } else {
                 String disposition = part.getDisposition();
                 if (Part.ATTACHMENT.equals(disposition)) {
@@ -347,12 +351,6 @@ public class MessageLoader {
                     }
                     msgContent.inlineImageFileList.add(
                             new InlineImageFile(cid, MimeUtility.decodeText(part.getFileName()), part.getDataHandler().getDataSource()));
-                } else {
-                    if (part.isMimeType("text/html")) {
-                        msgContent.html = part.getContent().toString();
-                    } else if (part.isMimeType("text/plain")) {
-                        msgContent.text = part.getContent().toString();
-                    }
                 }
             }
         }
