@@ -334,23 +334,29 @@ public class MessageLoader {
             Part part = multiPart.getBodyPart(i);
             if (part.getContentType().indexOf("multipart") >= 0) {
                 setMultipartContent((Multipart) part.getContent(), msgContent);
-            } else if (part.isMimeType("text/html")) {
-                msgContent.html = part.getContent().toString();
-            } else if (part.isMimeType("text/plain")) {
-                msgContent.text = part.getContent().toString();
             } else {
                 String disposition = part.getDisposition();
                 if (Part.ATTACHMENT.equals(disposition)) {
+                    // Dispositionが"attachment"の場合、ContentTypeは判定しない
                     msgContent.attachmentFileList.add(
                             new AttachmentFile(MimeUtility.decodeText(part.getFileName()), part.getDataHandler().getDataSource()));
-                } else if (Part.INLINE.equals(disposition)) {
-                    String cid = "";
-                    if (part instanceof MimeBodyPart) {
-                        MimeBodyPart mimePart = (MimeBodyPart) part;
-                        cid = mimePart.getContentID();
+                } else {
+                    if (part.isMimeType("text/html")) {
+                        msgContent.html = part.getContent().toString();
+                    } else if (part.isMimeType("text/plain")) {
+                        msgContent.text = part.getContent().toString();
+                    } else {
+                        // Dispositionが"inline"の場合、ContentTypeを先に判定する
+                        if (Part.INLINE.equals(disposition)) {
+                            String cid = "";
+                            if (part instanceof MimeBodyPart) {
+                                MimeBodyPart mimePart = (MimeBodyPart) part;
+                                cid = mimePart.getContentID();
+                            }
+                            msgContent.inlineImageFileList.add(
+                                    new InlineImageFile(cid, MimeUtility.decodeText(part.getFileName()), part.getDataHandler().getDataSource()));
+                        }
                     }
-                    msgContent.inlineImageFileList.add(
-                            new InlineImageFile(cid, MimeUtility.decodeText(part.getFileName()), part.getDataHandler().getDataSource()));
                 }
             }
         }
