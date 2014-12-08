@@ -4,7 +4,7 @@
 
   <groupId>com.szmslab.quickjavamail</groupId>
   <artifactId>quick-javamail</artifactId>
-  <version>1.0.1</version>
+  <version>1.0.2</version>
   <packaging>jar</packaging>
 
   <name>quick-javamail</name>
