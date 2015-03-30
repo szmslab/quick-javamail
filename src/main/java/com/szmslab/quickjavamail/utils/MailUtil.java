@@ -16,6 +16,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.SequenceInputStream;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -25,6 +26,7 @@ import javax.mail.Message;
 import javax.mail.MessagingException;
 import javax.mail.Part;
 import javax.mail.internet.MimeMessage;
+import javax.mail.internet.MimeUtility;
 
 import com.szmslab.quickjavamail.receive.MessageLoader;
 
@@ -276,6 +278,25 @@ public class MailUtil {
                     e.printStackTrace();
                 }
             }
+        }
+    }
+
+    /**
+     * MIMEヘッダ文字列をデコードします。
+     *
+     * @param text
+     *            デコード対象のMIMEヘッダ文字列
+     * @return デコード結果
+     * @throws UnsupportedEncodingException
+     */
+    public static String decodeText(String text) throws UnsupportedEncodingException {
+        int start = text.indexOf("=?");
+        if (start < 0) {
+            return MimeUtility.decodeText(text);
+        } else if (start == 0) {
+            return MimeUtility.decodeText(text.replace("?==?", "?= =?"));
+        } else {
+            return text.substring(0, start) + MimeUtility.decodeText(text.substring(start).replace("?==?", "?= =?"));
         }
     }
 

@@ -22,13 +22,13 @@ import javax.mail.Multipart;
 import javax.mail.Part;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeBodyPart;
-import javax.mail.internet.MimeUtility;
 
 import org.apache.commons.lang3.StringUtils;
 
 import com.szmslab.quickjavamail.utils.AttachmentFile;
 import com.szmslab.quickjavamail.utils.InlineImageFile;
 import com.szmslab.quickjavamail.utils.MailAddress;
+import com.szmslab.quickjavamail.utils.MailUtil;
 
 /**
  * 受信したメール情報を読み込むクラスです。
@@ -339,14 +339,14 @@ public class MessageLoader {
                 if (Part.ATTACHMENT.equals(disposition)) {
                     // Dispositionが"attachment"の場合、ContentTypeは判定しない
                     msgContent.attachmentFileList.add(
-                            new AttachmentFile(MimeUtility.decodeText(part.getFileName()), part.getDataHandler().getDataSource()));
+                            new AttachmentFile(MailUtil.decodeText(part.getFileName()), part.getDataHandler().getDataSource()));
                 } else {
+                    // Dispositionが"attachment"以外の場合、ContentTypeで判定する
                     if (part.isMimeType("text/html")) {
                         msgContent.html = part.getContent().toString();
                     } else if (part.isMimeType("text/plain")) {
                         msgContent.text = part.getContent().toString();
                     } else {
-                        // Dispositionが"inline"の場合、ContentTypeを先に判定する
                         if (Part.INLINE.equals(disposition)) {
                             String cid = "";
                             if (part instanceof MimeBodyPart) {
@@ -354,7 +354,7 @@ public class MessageLoader {
                                 cid = mimePart.getContentID();
                             }
                             msgContent.inlineImageFileList.add(
-                                    new InlineImageFile(cid, MimeUtility.decodeText(part.getFileName()), part.getDataHandler().getDataSource()));
+                                    new InlineImageFile(cid, MailUtil.decodeText(part.getFileName()), part.getDataHandler().getDataSource()));
                         }
                     }
                 }
