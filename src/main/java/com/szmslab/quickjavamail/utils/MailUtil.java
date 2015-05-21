@@ -26,7 +26,11 @@ import javax.mail.Message;
 import javax.mail.MessagingException;
 import javax.mail.Part;
 import javax.mail.internet.MimeMessage;
+import javax.mail.internet.MimePart;
 import javax.mail.internet.MimeUtility;
+import javax.mail.util.ByteArrayDataSource;
+
+import org.apache.commons.lang3.StringUtils;
 
 import com.szmslab.quickjavamail.receive.MessageLoader;
 
@@ -36,6 +40,11 @@ import com.szmslab.quickjavamail.receive.MessageLoader;
  * @author szmslab
  */
 public class MailUtil {
+
+    /**
+     * OSがWindowsかどうか。
+     */
+    public static boolean IS_WINDOWS = System.getProperty("os.name").toLowerCase().indexOf("windows") >= 0;
 
     /**
      * Windows固有の機種依存文字を使用するように文字セットマッピングを上書きします。
@@ -56,6 +65,62 @@ public class MailUtil {
         if (parentDir != null && !parentDir.exists()) {
             parentDir.mkdirs();
         }
+    }
+
+    /**
+     * ファイル名に使用できない文字が含まれている場合、その文字を指定の文字列に置き換えます。
+     *
+     * @param srcFileName
+     *            変換前のファイル名
+     * @param replaceStr
+     *            置換後の文字列
+     * @param defaultFileName
+     *            デフォルトのファイル名
+     * @return 変換後のファイル名
+     */
+    public static String toValidFileName(String srcFileName, String replaceStr, String defaultFileName) {
+        if (StringUtils.isBlank(srcFileName)) {
+            return defaultFileName;
+        } else {
+            StringBuilder fileName = new StringBuilder();
+            for (char c : srcFileName.toCharArray()) {
+                if (isInvalidFileNameChar(c)) {
+                    fileName.append(replaceStr);
+                } else {
+                    fileName.append(c);
+                }
+            }
+            String destFileName = fileName.toString().trim();
+            if (StringUtils.isBlank(destFileName)) {
+                return defaultFileName;
+            } else {
+                return destFileName;
+            }
+        }
+    }
+
+    /**
+     * ファイル名に使用できない文字かどうかを判定します。
+     *
+     * @param c
+     *            判定対象文字
+     * @return ファイル名に使用できない文字かどうか
+     */
+    public static boolean isInvalidFileNameChar(char c) {
+        if (IS_WINDOWS) {
+            if (c >= 0 && c <= 31) {
+                return true;
+            } else if (c == '"' || c == '*' || c == '/'
+                    || c == ':' || c == '<' || c == '>'
+                    || c == '?' || c == '\\' || c == '|') {
+                return true;
+            }
+        } else {
+            if (c == 0 || c == '/') {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -282,6 +347,34 @@ public class MailUtil {
     }
 
     /**
+     * メッセージ全体をデータソース（ByteArrayDataSource）に変換します。
+     *
+     * @param message
+     *            メッセージ
+     * @param contentType
+     *            Content-Type文字列
+     * @return データソース
+     * @throws IOException
+     * @throws MessagingException
+     */
+    public static ByteArrayDataSource toByteArrayDataSource(Message message, String contentType) throws IOException, MessagingException {
+        ByteArrayOutputStream baos = null;
+        try {
+            baos = new ByteArrayOutputStream();
+            message.writeTo(baos);
+            return new ByteArrayDataSource(baos.toByteArray(), contentType);
+        } finally {
+            if (baos != null) {
+                try {
+                    baos.close();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
+    /**
      * MIMEヘッダ文字列をデコードします。
      *
      * @param text
@@ -290,6 +383,9 @@ public class MailUtil {
      * @throws UnsupportedEncodingException
      */
     public static String decodeText(String text) throws UnsupportedEncodingException {
+        if (text == null) {
+            return "";
+        }
         int start = text.indexOf("=?");
         if (start < 0) {
             return MimeUtility.decodeText(text);
@@ -299,5 +395,21 @@ public class MailUtil {
             return text.substring(0, start) + MimeUtility.decodeText(text.substring(start).replace("?==?", "?= =?"));
         }
     }
+
+    /**
+     * エンコード方式を取得します。
+     *
+     * @param part
+     *            パート
+     * @return エンコード方式
+     * @throws MessagingException
+     */
+    public static String getEncoding(Part part) throws MessagingException {
+        if (part instanceof MimePart) {
+            return ((MimePart) part).getEncoding();
+        }
+        return null;
+    }
+
 
 }

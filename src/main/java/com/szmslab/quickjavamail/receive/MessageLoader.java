@@ -22,6 +22,8 @@ import javax.mail.Multipart;
 import javax.mail.Part;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeBodyPart;
+import javax.mail.internet.MimeMessage;
+import javax.mail.internet.MimeUtility;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -332,16 +334,35 @@ public class MessageLoader {
     private void setMultipartContent(Multipart multiPart, MessageContent msgContent) throws MessagingException, IOException {
         for (int i = 0; i < multiPart.getCount(); i++) {
             Part part = multiPart.getBodyPart(i);
-            if (part.getContentType().indexOf("multipart") >= 0) {
+            String contentType = part.getContentType();
+            if (contentType.indexOf("multipart") >= 0) {
                 setMultipartContent((Multipart) part.getContent(), msgContent);
             } else {
                 String disposition = part.getDisposition();
                 if (Part.ATTACHMENT.equals(disposition)) {
-                    // Dispositionが"attachment"の場合、ContentTypeは判定しない
-                    msgContent.attachmentFileList.add(
-                            new AttachmentFile(MailUtil.decodeText(part.getFileName()), part.getDataHandler().getDataSource()));
+                    // Content-Dispositionが"attachment"の場合、Content-Typeは判定しない
+                    String encoding = MailUtil.getEncoding(part);
+                    String fileName = MailUtil.decodeText(part.getFileName());
+                    if (part.isMimeType("message/rfc822") && "base64".equals(encoding)) {
+                        // Content-Typeが"message/rfc822"で、かつ、Content-Transfer-Encodingが"base64"だと内容がデコードされない。
+                        // その為、取得した内容をBASE64でデコードして、添付されたEMLファイルとして取得する。
+                        Object rawContent = part.getContent();
+                        if (rawContent instanceof Message) {
+                            MimeMessage attachmentMail =
+                                    new MimeMessage(null, MimeUtility.decode(((Message) rawContent).getInputStream(), encoding));
+                            if (StringUtils.isBlank(fileName)) {
+                                // メールのSubjectをファイル名とする。
+                                fileName = MailUtil.toValidFileName(attachmentMail.getSubject(), "_", "NoSubject") + ".eml";
+                            }
+                            msgContent.attachmentFileList.add(
+                                    new AttachmentFile(fileName, MailUtil.toByteArrayDataSource(attachmentMail, contentType)));
+                        }
+                    } else {
+                        msgContent.attachmentFileList.add(
+                                new AttachmentFile(fileName, part.getDataHandler().getDataSource()));
+                    }
                 } else {
-                    // Dispositionが"attachment"以外の場合、ContentTypeで判定する
+                    // Content-Dispositionが"attachment"以外の場合、Content-Typeで判定する
                     if (part.isMimeType("text/html")) {
                         msgContent.html = part.getContent().toString();
                     } else if (part.isMimeType("text/plain")) {
