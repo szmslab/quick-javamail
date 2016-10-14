@@ -162,8 +162,12 @@ public class MailSender {
      * @return 自身のインスタンス
      */
     public MailSender header(String key, String value) {
-        if (StringUtils.isNotBlank(key) && StringUtils.isNotBlank(value)) {
-            headers.setProperty(key, value);
+        if (StringUtils.isNotBlank(key)) {
+            if (value == null) {
+                headers.remove(key);
+            } else {
+                headers.setProperty(key, value);
+            }
         }
         return this;
     }
@@ -192,10 +196,8 @@ public class MailSender {
      * @return 自身のインスタンス
      */
     public MailSender charset(String charset, String contentTransferEncoding) {
-        if (StringUtils.isNotBlank(charset)) {
-            charset(charset);
-            header("Content-Transfer-Encoding", contentTransferEncoding);
-        }
+        charset(charset);
+        header("Content-Transfer-Encoding", contentTransferEncoding);
         return this;
     }
 
@@ -207,9 +209,7 @@ public class MailSender {
      * @return 自身のインスタンス
      */
     public MailSender from(MailAddress address) {
-        if (address != null) {
-            fromAddress = address;
-        }
+        fromAddress = address;
         return this;
     }
 
@@ -285,9 +285,7 @@ public class MailSender {
      * @return 自身のインスタンス
      */
     public MailSender subject(String subject) {
-        if (StringUtils.isNotBlank(subject)) {
-            this.subject = subject;
-        }
+        this.subject = subject;
         return this;
     }
 
@@ -299,23 +297,19 @@ public class MailSender {
      * @return 自身のインスタンス
      */
     public MailSender text(String text) {
-        if (StringUtils.isNotBlank(text)) {
-            this.text = text;
-        }
+        this.text = text;
         return this;
     }
 
     /**
      * 本文(HTML)を設定します。
      *
-     * @param text
+     * @param html
      *            本文(HTML)
      * @return 自身のインスタンス
      */
-   public MailSender html(String html) {
-        if (StringUtils.isNotBlank(html)) {
-            this.html = html;
-        }
+    public MailSender html(String html) {
+        this.html = html;
         return this;
     }
 
@@ -365,7 +359,7 @@ public class MailSender {
 
         final MimeMessage message = new MimeMessage(session);
 
-        message.setFrom(fromAddress.toInternetAddress(charset));
+        message.setFrom(toInternetAddress(fromAddress));
         message.setReplyTo(toInternetAddresses(replyToAddressList));
         message.addRecipients(Message.RecipientType.TO, toInternetAddresses(toAddressList));
         message.addRecipients(Message.RecipientType.CC, toInternetAddresses(ccAddressList));
@@ -389,11 +383,30 @@ public class MailSender {
      * @throws UnsupportedEncodingException
      */
     private InternetAddress[] toInternetAddresses(List<MailAddress> addressList) throws AddressException, UnsupportedEncodingException {
-        InternetAddress[] arr = new InternetAddress[addressList.size()];
-        for (int i = 0; i < addressList.size(); i++) {
-            arr[i] = addressList.get(i).toInternetAddress(charset);
+        List<InternetAddress> list = new ArrayList<InternetAddress>();
+        for (MailAddress address : addressList) {
+            InternetAddress iAddress = toInternetAddress(address);
+            if (iAddress != null) {
+                list.add(iAddress);
+            }
         }
-        return arr;
+        return list.toArray(new InternetAddress[list.size()]);
+    }
+
+    /**
+     * MailAddressをInternetAddressに変換します。
+     *
+     * @param address
+     *            MailAddressのインスタンス
+     * @return InternetAddressのインスタンス
+     * @throws AddressException
+     * @throws UnsupportedEncodingException
+     */
+    private InternetAddress toInternetAddress(MailAddress address) throws AddressException, UnsupportedEncodingException {
+        if (address == null) {
+            return null;
+        }
+        return address.toInternetAddress(charset);
     }
 
     /**
@@ -431,7 +444,7 @@ public class MailSender {
      */
     private MimeBodyPart createTextPart() throws MessagingException {
         MimeBodyPart textPart = new MimeBodyPart();
-        textPart.setText(text, charset);
+        textPart.setText(StringUtils.defaultString(text), charset);
         setHeaderToPart(textPart);
         return textPart;
     }
@@ -444,7 +457,7 @@ public class MailSender {
      */
     private MimeBodyPart createHtmlPart() throws MessagingException {
         MimeBodyPart htmlPart = new MimeBodyPart();
-        htmlPart.setText(html, charset, "html");
+        htmlPart.setText(StringUtils.defaultString(html), charset, "html");
         setHeaderToPart(htmlPart);
         return htmlPart;
     }
@@ -493,12 +506,12 @@ public class MailSender {
      * @throws UnsupportedEncodingException
      */
     private void setContent(MimeMessage message) throws MessagingException, UnsupportedEncodingException {
-        if (StringUtils.isBlank(html)) {
+        if (StringUtils.isEmpty(html)) {
             if (attachmentFileList.isEmpty()) {
                 /*
                  * text/plain
                  */
-                message.setText(text, charset);
+                message.setText(StringUtils.defaultString(text), charset);
             } else {
                 /*
                  * multipart/mixed

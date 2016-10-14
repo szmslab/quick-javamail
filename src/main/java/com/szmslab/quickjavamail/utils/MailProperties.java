@@ -244,9 +244,7 @@ abstract public class MailProperties {
      *            対応する値
      */
     protected void setString(String key, String value) {
-        if (StringUtils.isNotBlank(value)) {
-            properties.setProperty(key, value);
-        }
+        setObject(key, value);
     }
 
     /**
@@ -269,8 +267,12 @@ abstract public class MailProperties {
      *            対応する値
      */
     protected void setObject(String key, Object value) {
-        if (value != null) {
-            properties.put(key, value);
+        if (StringUtils.isNotBlank(key)) {
+            if (value == null) {
+                properties.remove(key);
+            } else {
+                properties.put(key, value);
+            }
         }
     }
 

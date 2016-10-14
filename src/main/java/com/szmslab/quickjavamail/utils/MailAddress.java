@@ -11,8 +11,6 @@ import java.io.UnsupportedEncodingException;
 import javax.mail.internet.AddressException;
 import javax.mail.internet.InternetAddress;
 
-import org.apache.commons.lang3.StringUtils;
-
 /**
  * メールアドレス情報を格納するクラスです。
  *
@@ -74,11 +72,7 @@ public class MailAddress {
      * @throws UnsupportedEncodingException
      */
     public InternetAddress toInternetAddress(String charset) throws AddressException, UnsupportedEncodingException {
-        if (StringUtils.isBlank(personal)) {
-            return new InternetAddress(address);
-        } else {
-            return new InternetAddress(address, personal, charset);
-        }
+        return new InternetAddress(address, personal, charset);
     }
 
     /**
@@ -105,7 +99,7 @@ public class MailAddress {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        if (StringUtils.isBlank(personal)) {
+        if (personal == null) {
             sb.append(address);
         } else {
             sb.append(personal).append("<").append(address).append(">");
