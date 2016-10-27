@@ -314,7 +314,11 @@ public class MessageLoader {
             } else if (c instanceof ByteArrayInputStream) {
                 msgContent.partialContent = (ByteArrayInputStream) c;
             } else {
-                msgContent.text = c.toString();
+                if (message.isMimeType("text/html")) {
+                    msgContent.html += c.toString();
+                } else {
+                    msgContent.text += c.toString();
+                }
             }
             contentCashe = msgContent;
         }
@@ -340,7 +344,6 @@ public class MessageLoader {
             } else {
                 String disposition = part.getDisposition();
                 if (Part.ATTACHMENT.equals(disposition)) {
-                    // Content-Dispositionが"attachment"の場合、Content-Typeは判定しない
                     String encoding = MailUtil.getEncoding(part);
                     String fileName = MailUtil.decodeText(part.getFileName());
                     if (part.isMimeType("message/rfc822") && "base64".equals(encoding)) {
@@ -361,22 +364,19 @@ public class MessageLoader {
                         msgContent.attachmentFileList.add(
                                 new AttachmentFile(fileName, part.getDataHandler().getDataSource()));
                     }
+                } else if (Part.INLINE.equals(disposition)) {
+                    String cid = "";
+                    if (part instanceof MimeBodyPart) {
+                        MimeBodyPart mimePart = (MimeBodyPart) part;
+                        cid = mimePart.getContentID();
+                    }
+                    msgContent.inlineImageFileList.add(
+                            new InlineImageFile(cid, MailUtil.decodeText(part.getFileName()), part.getDataHandler().getDataSource()));
                 } else {
-                    // Content-Dispositionが"attachment"以外の場合、Content-Typeで判定する
                     if (part.isMimeType("text/html")) {
-                        msgContent.html = part.getContent().toString();
-                    } else if (part.isMimeType("text/plain")) {
-                        msgContent.text = part.getContent().toString();
+                        msgContent.html += part.getContent().toString();
                     } else {
-                        if (Part.INLINE.equals(disposition)) {
-                            String cid = "";
-                            if (part instanceof MimeBodyPart) {
-                                MimeBodyPart mimePart = (MimeBodyPart) part;
-                                cid = mimePart.getContentID();
-                            }
-                            msgContent.inlineImageFileList.add(
-                                    new InlineImageFile(cid, MailUtil.decodeText(part.getFileName()), part.getDataHandler().getDataSource()));
-                        }
+                        msgContent.text += part.getContent().toString();
                     }
                 }
             }
