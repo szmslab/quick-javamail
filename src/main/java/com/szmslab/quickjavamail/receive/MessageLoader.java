@@ -364,19 +364,23 @@ public class MessageLoader {
                         msgContent.attachmentFileList.add(
                                 new AttachmentFile(fileName, part.getDataHandler().getDataSource()));
                     }
-                } else if (Part.INLINE.equals(disposition)) {
-                    String cid = "";
-                    if (part instanceof MimeBodyPart) {
-                        MimeBodyPart mimePart = (MimeBodyPart) part;
-                        cid = mimePart.getContentID();
-                    }
-                    msgContent.inlineImageFileList.add(
-                            new InlineImageFile(cid, MailUtil.decodeText(part.getFileName()), part.getDataHandler().getDataSource()));
                 } else {
                     if (part.isMimeType("text/html")) {
                         msgContent.html += part.getContent().toString();
-                    } else {
+                    } else if (part.isMimeType("text/plain")) {
                         msgContent.text += part.getContent().toString();
+                    } else {
+                        // Content-Dispositionが"inline"であっても、Content-Typeが"text/plain"のケースがあるので、
+                        // Content-Typeでの判別後に、inline画像の判別をする。
+                        if (Part.INLINE.equals(disposition)) {
+                            String cid = "";
+                            if (part instanceof MimeBodyPart) {
+                                MimeBodyPart mimePart = (MimeBodyPart) part;
+                                cid = mimePart.getContentID();
+                            }
+                            msgContent.inlineImageFileList.add(
+                                    new InlineImageFile(cid, MailUtil.decodeText(part.getFileName()), part.getDataHandler().getDataSource()));
+                        }
                     }
                 }
             }
